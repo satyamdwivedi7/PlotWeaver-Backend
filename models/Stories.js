@@ -20,7 +20,8 @@ const storySchema = new Schema(
       required: true,
     },
   },
-  { timestamps: true }
 );
 
 const Story = mongoose.model("Story", storySchema);
+
+module.exports = Story;
