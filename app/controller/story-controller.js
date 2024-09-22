@@ -79,8 +79,6 @@ module.exports.addVersion = async (req, res) => {
   }
 };
 
-// Create a chapter in an existing version or start a new version
-// Create a chapter in an existing version or start a new version
 module.exports.createChapter = async (req, res) => {
   try {
     const { versionId, previousChapterId, title, content, author } = req.body;
@@ -91,7 +89,24 @@ module.exports.createChapter = async (req, res) => {
       return res.status(404).json({ message: "Version not found" });
     }
 
-    // Find the index of the previous chapter
+    // If this is the first chapter, previousChapterId should be null
+    if (previousChapterId === null) {
+      // Create a new chapter
+      const newChapter = new Chapter({
+        title,
+        content,
+        author,
+        timestamp: new Date(),
+      });
+
+      version.chapters.push(newChapter._id);
+      await newChapter.save();
+      await version.save();
+
+      return res.status(201).json(version);
+    }
+
+    // If not the first chapter, check for the previous chapter
     const previousChapterIndex = version.chapters.findIndex(
       (chapter) => chapter._id.toString() === previousChapterId
     );
@@ -103,19 +118,20 @@ module.exports.createChapter = async (req, res) => {
 
     const nextChapterIndex = previousChapterIndex + 1;
 
+    // Create a new chapter
+    const newChapter = new Chapter({
+      title,
+      content,
+      author,
+      timestamp: new Date(),
+    });
+
     // Check if there is any chapter after the selected chapter
     if (version.chapters[nextChapterIndex]) {
       // Create a new version from the current version up to the selected chapter
       const newVersion = new Version({
         story: version.story,
-        chapters: version.chapters.slice(0, nextChapterIndex), // Copy up to Chapter 2
-      });
-
-      const newChapter = new Chapter({
-        title,
-        content,
-        author,
-        timestamp: new Date(),
+        chapters: version.chapters.slice(0, nextChapterIndex), // Copy up to the previous chapter
       });
 
       // Add the new chapter to the new version
@@ -131,13 +147,6 @@ module.exports.createChapter = async (req, res) => {
       return res.status(201).json(newVersion);
     } else {
       // If there are no more chapters after the selected one, just add the new chapter to the current version
-      const newChapter = new Chapter({
-        title,
-        content,
-        author,
-        timestamp: new Date(),
-      });
-
       version.chapters.push(newChapter._id);
       await newChapter.save();
       await version.save();
@@ -148,6 +157,7 @@ module.exports.createChapter = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // Get all chapters for a specific version
 module.exports.getChapters = async (req, res) => {
