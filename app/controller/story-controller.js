@@ -32,17 +32,46 @@ module.exports.getStory = async (req, res) => {
 // Create a new story and its first version
 module.exports.createStory = async (req, res) => {
   try {
+    const {
+      title,
+      genre,
+      overallAuthor,
+      description,
+      chapterTitle,
+      chapterContent,
+      chapterAuthor,
+    } = req.body;
+
+    // Ensure chapter details are provided
+    if (!chapterTitle || !chapterContent || !chapterAuthor) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Chapter title, content, and author are required to create a story.",
+        });
+    }
+
+    // Create the story
     const story = await Story.create({
-      title: req.body.title,
-      genre: req.body.genre,
-      overallAuthor: req.body.overallAuthor,
-      description: req.body.description,
+      title,
+      genre,
+      overallAuthor,
+      description,
     });
 
-    // Create the first version when a story is created
+    // Create the first chapter
+    const chapter = await Chapter.create({
+      title: chapterTitle,
+      content: chapterContent,
+      author: chapterAuthor,
+      timestamp: new Date(),
+    });
+
+    // Create the first version and associate it with the story
     const version = await Version.create({
       story: story._id,
-      chapters: [], // Initial version will have no chapters
+      chapters: [chapter._id], // Add the first chapter to the version
     });
 
     // Push the version to the story's versions array
@@ -50,11 +79,14 @@ module.exports.createStory = async (req, res) => {
     await story.save();
 
     res.status(201).json(story);
-    console.log("Story and initial version created successfully");
+    console.log(
+      "Story, initial version, and first chapter created successfully"
+    );
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 // Add a version to an existing story
